@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>SYSTEM INFECTED</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#000;overflow:hidden}
+  body{font-family:ui-monospace,Menlo,Consolas,monospace;color:#ff2b2b;
+       display:flex;align-items:center;justify-content:center;
+       user-select:none;-webkit-user-select:none}
+  #app{position:absolute;inset:0;background:#080808;overflow:hidden;transition:background .07s}
+  #app.flash{background:#8b0000;color:#fff}
+  #title{font-size:clamp(24px,7vw,44px);font-weight:900;text-align:center;
+         padding:26px 12px 6px;letter-spacing:2px}
+  #sub{text-align:center;font-size:12px;color:#ff9a9a}
+  #timer{text-align:center;font-size:13px;color:#fff;margin-top:8px;
+         background:#1a0000;border:1px solid #ff2b2b;display:inline-block;
+         padding:5px 12px;border-radius:6px}
+  #wrapTimer{text-align:center;margin-top:14px}
+  #log{position:absolute;top:150px;left:0;right:0;bottom:100px;padding:0 18px;
+       font-size:11px;line-height:1.55;color:#ffb3b3;overflow:hidden}
+  #btns{position:absolute;bottom:26px;left:0;right:0;text-align:center;z-index:5}
+  button{font-family:inherit;font-weight:900;font-size:17px;padding:15px 28px;
+         border:2px solid #ff2b2b;background:#141414;color:#ff2b2b;
+         border-radius:10px;cursor:pointer}
+  #halt{border-color:#fff;color:#fff;display:none}
+  .pop{position:absolute;background:#1a1a1a;border:1px solid #ff2b2b;color:#fff;
+       font-size:10px;padding:9px 11px;border-radius:6px;max-width:190px;
+       box-shadow:0 0 16px #000;z-index:4}
+  #overlay{position:absolute;inset:0;background:rgba(0,0,0,.93);z-index:10;
+           display:flex;align-items:center;justify-content:center;text-align:center;padding:30px}
+  #overlay h1{font-size:clamp(22px,6vw,34px);letter-spacing:2px;color:#ff2b2b}
+  #overlay p{margin-top:14px;font-size:12px;color:#ffb3b3;line-height:1.7}
+  #overlay .tap{margin-top:26px;font-size:15px;color:#fff;
+                animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="title">SYSTEM INFECTED</div>
+  <div id="sub">MOO.SCREAM.WORM v4.0 &mdash; DO NOT CLOSE</div>
+  <div id="wrapTimer"><span id="timer">INFECTED 00:00:00</span></div>
+  <div id="log"></div>
+  <div id="btns"><button id="halt">STOP</button></div>
+</div>
+<div id="overlay">
+  <div>
+    <h1 id="ovTitle">SYSTEM INFECTED</h1>
+    <p>Volume up. Silent mode off.<br>Tap anywhere to begin.</p>
+    <div class="tap">&#9654; TAP TO INFECT</div>
+  </div>
+</div>
+<script>
+(function(){
+  var app=document.getElementById('app'), logEl=document.getElementById('log'),
+      halt=document.getElementById('halt'), overlay=document.getElementById('overlay'),
+      ovTitle=document.getElementById('ovTitle'), timerEl=document.getElementById('timer');
+
+  var ctx=null, oscs=[], timers=[], vib=null, running=false, trap=false, wl=null, t0=0;
+
+  var files=['kernel32.dll','bootmgr','DCIM/photos_2019','passwords.txt','wallet.dat',
+             'system32/config/SAM','Downloads','Contacts.db','bankapp_cache','voice_memos'];
+  var verbs=['ENCRYPTING','OVERWRITING','CORRUPTING','DELETING','UPLOADING','SCRAMBLING'];
+  var pops=['YOU HAVE A VIRUS','SYSTEM32 IS BEING ENCRYPTED','MOOOOO','DO NOT TURN OFF YOUR PHONE',
+            'ALL FILES ARE LOST','JUST KIDDING... OR AM I?','ERROR 0x000000FE','SENDING YOUR PHOTOS'];
+
+  function rnd(a){return a[Math.random()*a.length|0];}
+
+  /* ---- loud layered scream ---- */
+  function buildScream(){
+    var AC=window.AudioContext||window.webkitAudioContext;
+    ctx=new AC();
+    if(ctx.state==='suspended') ctx.resume();
+
+    var master=ctx.createGain(); master.gain.value=1.0; master.connect(ctx.destination);
+    var comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-60; comp.knee.value=0; comp.ratio.value=20;
+    comp.attack.value=0.003; comp.release.value=0.15;
+    comp.connect(master);
+    var makeup=ctx.createGain(); makeup.gain.value=1.4; makeup.connect(comp);
+
+    var dist=ctx.createWaveShaper(); var curve=new Float32Array(2048);
+    for(var i=0;i<2048;i++){var x=i/1024-1; curve[i]=Math.tanh(x*9);}
+    dist.curve=curve; dist.connect(makeup);
+
+    var o1=ctx.createOscillator(); o1.type='sawtooth'; o1.frequency.value=720;
+    var o2=ctx.createOscillator(); o2.type='square';   o2.frequency.value=1080;
+    var o3=ctx.createOscillator(); o3.type='triangle'; o3.frequency.value=1450;
+    var g2=ctx.createGain(); g2.gain.value=0.34;
+    var g3=ctx.createGain(); g3.gain.value=0.22;
+
+    var lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=14;
+    var lg=ctx.createGain(); lg.gain.value=210;
+    lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency); lg.connect(o3.frequency);
+
+    var siren=ctx.createOscillator(); siren.type='sine'; siren.frequency.value=520;
+    var sg=ctx.createGain(); sg.gain.value=0.3;
+    var slfo=ctx.createOscillator(); slfo.type='sine'; slfo.frequency.value=0.6;
+    var slg=ctx.createGain(); slg.gain.value=380;
+    slfo.connect(slg); slg.connect(siren.frequency);
+    siren.connect(sg); sg.connect(dist);
+
+    var nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
+    var nd=nb.getChannelData(0);
+    for(var j=0;j<nd.length;j++) nd[j]=Math.random()*2-1;
+    var noise=ctx.createBufferSource(); noise.buffer=nb; noise.loop=true;
+    var ng=ctx.createGain(); ng.gain.value=0.3;
+    noise.connect(ng); ng.connect(dist);
+
+    o1.connect(dist); o2.connect(g2); g2.connect(dist); o3.connect(g3); g3.connect(dist);
+
+    [o1,o2,o3,lfo,siren,slfo,noise].forEach(function(o){o.start();});
+    oscs=[o1,o2,o3,lfo,siren,slfo,noise];
+  }
+
+  function pop(){
+    if(!running) return;
+    var d=document.createElement('div'); d.className='pop';
+    d.textContent=rnd(pops);
+    d.style.left=(Math.random()*60)+'%'; d.style.top=(Math.random()*65)+'%';
+    app.appendChild(d); setTimeout(function(){d.remove();},4200);
+  }
+
+  async function keepAwake(){
+    try{ wl=await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+
+  function tickTimer(){
+    var s=Math.floor((Date.now()-t0)/1000);
+    var h=String(Math.floor(s/3600)).padStart(2,'0');
+    var m=String(Math.floor(s%3600/60)).padStart(2,'0');
+    var x=String(s%60).padStart(2,'0');
+    timerEl.textContent='INFECTED '+h+':'+m+':'+x;
+  }
+
+  function start(){
+    if(running) return;
+    running=true;
+    overlay.style.display='none';
+    halt.style.display='inline-block';
+
+    if(!localStorage.getItem('moo_t0')) localStorage.setItem('moo_t0', Date.now());
+    t0=Number(localStorage.getItem('moo_t0'));
+
+    buildScream();
+    timers.push(setInterval(function(){app.classList.toggle('flash');},130));
+    timers.push(setInterval(function(){
+      logEl.insertAdjacentHTML('afterbegin','<div>'+rnd(verbs)+' '+rnd(files)+' ...</div>');
+      while(logEl.children.length>22) logEl.lastChild.remove();
+    },130));
+    timers.push(setInterval(pop,650));
+    timers.push(setInterval(tickTimer,250));
+    tickTimer();
+
+    vib=setInterval(function(){ if(navigator.vibrate) navigator.vibrate([450,90,450]); },1300);
+    if(navigator.vibrate) navigator.vibrate([450,90,450]);
+
+    if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+    keepAwake();
+
+    history.pushState({moo:1},'',''); trap=true;
+    pop();
+  }
+
+  function stop(){
+    running=false; trap=false;
+    halt.style.display='none';
+    timers.forEach(clearInterval); timers=[]; clearInterval(vib);
+    oscs.forEach(function(o){try{o.stop();}catch(e){}}); oscs=[];
+    if(ctx){try{ctx.close();}catch(e){} ctx=null;}
+    if(navigator.vibrate) navigator.vibrate(0);
+    if(wl){try{wl.release();}catch(e){} wl=null;}
+    app.classList.remove('flash');
+    logEl.innerHTML='<div style="color:#fff">CONNECTION TERMINATED.</div>';
+    localStorage.removeItem('moo_t0');
+    ovTitle.textContent='INFECTED AGAIN?';
+    overlay.querySelector('.tap').textContent='\u25B6 TAP TO RE-INFECT';
+    overlay.style.display='flex';
+  }
+
+  /* back button trap while running */
+  window.addEventListener('popstate', function(){
+    if(running && trap){ history.pushState({moo:1},'',''); }
+  });
+
+  /* auto-resume on return */
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && running) keepAwake();
+  });
+
+  window.addEventListener('beforeunload', function(e){
+    if(running){ e.preventDefault(); e.returnValue=''; }
+  });
+
+  overlay.addEventListener('click', start);
+  halt.addEventListener('click', function(e){ e.stopPropagation(); stop(); });
+
+  /* if they come back, it remembers */
+  if(localStorage.getItem('moo_t0')){
+    ovTitle.textContent='STILL INFECTED';
+    overlay.querySelector('.tap').textContent='\u25B6 TAP TO RESUME';
+  }
+})();
+</script>
+</body>
+</html>
